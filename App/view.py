@@ -31,7 +31,8 @@ import threading
 from App import controller
 from DISClib.ADT import stack
 assert config
-
+import time
+import tracemalloc
 """
 La vista se encarga de la interacción con el usuario.
 Presenta el menu de opciones  y  por cada seleccion
@@ -44,7 +45,7 @@ operación seleccionada.
 # ___________________________________________________
 
 
-servicefile = 'bus_routes_14000.csv'
+servicefile = 'bus_routes_10000.csv'
 initialStation = None
 
 # ___________________________________________________
@@ -83,8 +84,18 @@ def optionThree(cont):
 
 
 def optionFour(cont, initialStation):
-    controller.minimumCostPaths(cont, initialStation)
 
+    tracemalloc.start()
+    start_time = getTime()
+    start_memory = getMemory()
+    controller.minimumCostPaths(cont, initialStation)
+    stop_memory = getMemory()
+    stop_time = getTime()
+    tracemalloc.stop()
+
+    delta_time = stop_time - start_time
+    delta_memory = deltaMemory(start_memory, stop_memory)
+    print(delta_time)
 
 def optionFive(cont, destStation):
     haspath = controller.hasPath(cont, destStation)
@@ -158,3 +169,37 @@ if __name__ == "__main__":
     sys.setrecursionlimit(2 ** 20)
     thread = threading.Thread(target=thread_cycle)
     thread.start()
+# ======================================
+# Funciones para medir tiempo y memoria
+# ======================================
+
+
+def getTime():
+    """
+    devuelve el instante tiempo de procesamiento en milisegundos
+    """
+    return float(time.perf_counter()*1000)
+
+
+
+def getMemory():
+    """
+    toma una muestra de la memoria alocada en instante de tiempo
+    """
+    return tracemalloc.take_snapshot()
+
+
+def deltaMemory(start_memory, stop_memory):
+    """
+    calcula la diferencia en memoria alocada del programa entre dos
+    instantes de tiempo y devuelve el resultado en bytes (ej.: 2100.0 B)
+    """
+    memory_diff = stop_memory.compare_to(start_memory, "filename")
+    delta_memory = 0.0
+
+    # suma de las diferencias en uso de memoria
+    for stat in memory_diff:
+        delta_memory = delta_memory + stat.size_diff
+    # de Byte -> kByte
+    delta_memory = delta_memory/1024.0
+    return delta_memory
